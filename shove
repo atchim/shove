@@ -8,7 +8,7 @@ import shutil
 
 
 def critical(*args, **kwargs):
-  """Log a critical message and exit with exit code 1."""
+  """Log a critical message and exit with exit code 2."""
   logger.critical(*args, **kwargs)
   exit(2)
 
@@ -50,7 +50,7 @@ def is_match(to_match, patterns):
   """
 
   for pattern in patterns:
-    if pattern == '': continue
+    if not pattern: continue
     if re.match(pattern.strip(), to_match): return True
 
   return False
