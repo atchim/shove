@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+
+import argparse
+import logging
+import os
+import re
+import shutil
+
+
+def critical(*args, **kwargs):
+  """Log a critical message and exit with exit code 1."""
+  logger.critical(*args, **kwargs)
+  exit(2)
+
+
+def error(*args, **kwargs):
+  """Log an error message. If the --keep-going argument has been specified, the
+  code execution will continue, otherwise execution will exit with code 1.
+  """
+
+  logger.error(*args, **kwargs)
+  if not cmd_args.keep_going: exit(1)
+
+
+def get_logger():
+  """Set the logger and return it."""
+
+  logger = logging.getLogger('shove')
+
+  if cmd_args.verbose == 0:
+    logger.setLevel(logging.ERROR)
+  elif cmd_args.verbose == 1:
+    logger.setLevel(logging.WARNING)
+  elif cmd_args.verbose == 2:
+    logger.setLevel(logging.INFO)
+  else:
+    logger.setLevel(logging.DEBUG)
+
+  ch = logging.StreamHandler()
+  ch.setLevel(logger.level)
+  ch.setFormatter(logging.Formatter('%(name)s: %(levelname)s: %(message)s'))
+  logger.addHandler(ch)
+
+  return logger
+
+
+def is_match(to_match, patterns):
+  """Return true if given string matches against any regex string contained in
+  the given list. Otherwise, return false.
+  """
+
+  for pattern in patterns:
+    if pattern == '': continue
+    if re.match(pattern.strip(), to_match): return True
+
+  return False
+
+
+def parse_args():
+  """Return a populated namespace with arguments from the CLI."""
+
+  parser = argparse.ArgumentParser(
+    description='stow, but angrier',
+    epilog='for more information, see the manpage',
+    prog='shove',
+  )
+
+  parser.add_argument(
+    '-a',
+    '--absolute',
+    action='store_true',
+    help='symlink with absolute path',
+  )
+
+  parser.add_argument(
+    '-d',
+    '--depth',
+    default=1,
+    help="limit depth level to shove the tree; it's level 1 by default",
+    metavar='level',
+    type=int,
+  )
+
+  parser.add_argument(
+    '-i',
+    '--ignore',
+    default=[],
+    help='specify a regex pattern to ignore files',
+    metavar='pattern',
+    nargs='+',
+  )
+
+  parser.add_argument(
+    '-k',
+    '--keep-going',
+    action='store_true',
+    help='do not exit on passable errors',
+  )
+
+  parser.add_argument(
+    '-n',
+    '--no',
+    action='store_true',
+    help='do not make any change to the filesystem',
+  )
+
+  parser.add_argument(
+    '-p',
+    '--paths',
+    action='append',
+    default=[],
+    help='source and destination paths to shove',
+    metavar=('src', 'dest'),
+    nargs=2,
+  )
+
+  parser.add_argument(
+    '-r',
+    '--rage',
+    action='count',
+    default=0,
+    help='increase shove rage',
+  )
+
+  parser.add_argument(
+    '-t',
+    '--tree',
+    action='store_true',
+    help='shove source tree',
+  )
+
+  parser.add_argument(
+    '-u',
+    '--unshove',
+    action='store_true',
+    help='unshove files from destination',
+  )
+
+  parser.add_argument(
+    '-v',
+    '--verbose',
+    action='count',
+    default=0,
+    help='increase verbosity',
+  )
+
+  return parser.parse_args()
+
+
+def remove_dir(path):
+  """Remove directory that the given path refers to."""
+
+  if len(os.listdir(path)) == 0:
+    if cmd_args.rage < 2:
+      error(
+        f"rage level {cmd_args.rage} is not enough to remove empty directory "
+        f"'{path}', which requires rage level 2"
+      )
+    else:
+      try:
+        os.rmdir(path)
+      except OSError as err:
+        error(f"unable to remove empty directory '{path}': {err}")
+      else:
+        logger.warning(f"removed empty directory '{path}'")
+  else:
+    if cmd_args.rage < 3:
+      error(
+        f"rage level {cmd_args.rage} is not enough to remove non-empty "
+        f"directory '{path}', which requires rage level 3"
+      )
+    else:
+      try:
+        shutil.rmtree(path)
+      except OSError as err:
+        error(f"unable to remove non-empty directory '{path}': {err}")
+      else:
+        logger.warning(f"removed non-empty directory '{path}'")
+
+
+def remove_file(path):
+  """Remove file that the given path refers to."""
+
+  if cmd_args.rage < 2:
+    error(
+      f"rage level {cmd_args.rage} is not enough to remove file directory, "
+      'which requires rage level 2'
+    )
+  else:
+    try:
+      os.remove(path)
+    except OSError as err:
+      error(f"unable to remove file '{path}': {err}")
+    else:
+      logger.warning(f"removed file '{path}'")
+
+
+def remove_symlink(src, dest):
+  """Remove link that the destination path refers to."""
+
+  path = os.readlink(dest)
+
+  if not os.path.isabs(path):
+    path = os.path.join(os.path.dirname(dest), path)
+
+  if os.path.samefile(path, src):
+    try:
+      os.remove(dest)
+    except OSError as err:
+      error(f"unable to remove matched symlink '{dest}': {err}")
+    else:
+      logger.debug(f"removed matched symlink '{dest}'")
+  else:
+    if cmd_args.rage < 1:
+      error(
+        f"rage level {cmd_args.rage} is not enough to remove unmatched "
+        'symlink, which requires rage level 1'
+      )
+    else:
+      try:
+        os.remove(dest)
+      except OSError as err:
+        error(f"unable to remove unmatched symlink '{dest}': {err}")
+      else:
+        logger.info(f"removed unmatched symlink '{dest}'")
+
+
+def shove(src, dest, depth):
+  """Shove source file in the destination."""
+
+  if cmd_args.no:
+    logger.info(f"not shoving '{src}' into '{dest}'")
+    return
+
+  logger.debug(f"attempting to shove '{src}' into '{dest}'")
+
+  isdir = os.path.isdir(src) and (depth < cmd_args.depth or cmd_args.tree)
+
+  if os.path.islink(dest):
+    logger.debug(f"symlink '{dest}' already exists")
+    remove_symlink(src, dest)
+  elif os.path.isdir(dest):
+    logger.debug(f"directory '{dest}' already exists")
+    if isdir and not cmd_args.unshove: return
+    remove_dir(dest)
+  elif os.path.isfile(dest):
+    logger.debug(f"file '{dest}' already exists")
+    remove_file(dest)
+  else:
+    logger.debug(f"file '{dest}' does not exist yet")
+
+  if cmd_args.unshove: return
+
+  if isdir:
+    try:
+      os.mkdir(dest)
+    except OSError as err:
+      error(f"unable to create directory '{dest}': {err}")
+    else:
+      logger.info(f"shoved directory '{dest}'")
+  else:
+    if cmd_args.absolute:
+      path = os.path.abspath(src)
+    else:
+      path = os.path.relpath(src, os.path.dirname(dest))
+
+    try:
+      os.symlink(path, dest)
+    except OSError as err:
+      error(f"unable to symlink '{dest}': {err}")
+    else:
+      logger.info(f"symlinked '{dest}'")
+
+
+def walk(src, dest, depth=0):
+  """Walk through source file and shove it in the destination."""
+
+  if not cmd_args.unshove: shove(src, dest, depth)
+
+  if os.path.isdir(src) and (depth < cmd_args.depth or cmd_args.tree):
+    ignorepath = os.path.join(src, '.shoveignore')
+    ignore = []
+
+    if os.path.isfile(ignorepath):
+      with open(ignorepath) as reader:
+        ignore = list(map(str.strip, reader.readlines()))
+
+    for filename in os.listdir(src):
+      if filename == '.shoveignore': continue
+
+      if is_match(filename, ignore) or is_match(filename, cmd_args.ignore):
+        logger.debug(f"ignoring file '{filename}'")
+        continue
+
+      walk(
+        os.path.join(src, filename),
+        os.path.join(dest, filename),
+        depth + 1,
+      )
+
+  if cmd_args.unshove: shove(src, dest, depth)
+
+
+if __name__ == '__main__':
+  cmd_args = parse_args()
+  logger = get_logger()
+
+  for src, dest in cmd_args.paths:
+    if not os.path.exists(src): critical(f"path '{src}' does not exist")
+
+    if os.path.exists(dest) and os.path.samefile(src, dest):
+      critical(
+        'source and destination paths refers to the same file '
+        f"'{os.path.realpath(src)}'"
+      )
+
+    walk(src, dest)

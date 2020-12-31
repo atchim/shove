@@ -1,0 +1,100 @@
+.TH SHOVE 1 2020-12-28 shove "User Commands"
+
+
+.SH NAME
+
+shove \- stow, but angrier
+
+
+.SH SYNOPSIS
+
+\fBshove\fR [\fIFLAGS\fR]... [\fIOPTIONS\fR]...
+
+
+.SH DESCRIPTION
+
+\" TODO
+
+
+.SH TERMINOLOGY
+
+.TP
+.B CHILD
+\" TODO
+
+.TP
+.B DEPTH
+\" TODO
+
+.TP
+.B MATCHED SYMBOLIC LINK
+\" TODO
+
+.TP
+.B UNMATCHED SYMBOLIC LINK
+\" TODO
+
+.TP
+.B SHOVE
+\" TODO
+
+.TP
+.B TREE
+\" TODO
+
+
+.SH FLAGS
+
+.TP
+.BR \-a ", " \-\-absolute
+If a symbolic links will be created, it will use absolute path.
+
+.TP
+.BR \-h ", " \-\-help
+Print help message and finish code execution, ignoring behavior of other
+arguments.
+
+.TP
+.BR \-k ", " \-\-keep\-going
+When a non-critical error occur, the code execution will continue.
+
+.TP
+.BR \-n ", " \-\-no
+No changes will be made in the filesystem and everytime that a file is not
+shoved, a information level message be printed instead.
+
+.TP
+.BR \-r ", " \-\-rage
+This flag is cumulative and the number of occurrences of this flag will affect
+the behavior of removing files in the destination tree. With 0 or more
+occurrences, Shove will be able to remove matched symbolic links. With 1 or
+more occurrences, Shove will be able to remove unmatched symbolic links. With 2
+or more occurrences, Shove will be able to remove regular files and empty
+directories. With 3 or more occurrences, Shove will be able to remove non-empty
+directories.
+
+.TP
+.BR \-t ", " \-\-tree
+If a directory is present in the source tree, it will be shoved by creating the
+same directory in the destination tree. All children of the source directory
+will be shoved.
+
+.TP
+.BR \-u ", " \-\-unshove
+If a file exists in the destination tree and it refers to a source file, it
+will be removed. No files will be created in the destination tree.
+
+.TP
+.BR \-v ", " \-\-verbose
+This flag is cumulative and the number of occurrences of this flag will affect
+the maximum logging level. With 0 or more occurrences, the \fBCRITICAL\fR and
+\fBERROR\fR levels will be printed. With 1 or more occurrences, the \fRWARN\fR
+level will be printed. With 2 or more occurrences, the \fBINFO\fR level will be
+printed. With 3 or more occurrences, the \fBDEBUG\fR level will be printed.
+
+
+.SH OPTIONS
+
+.TP
+\fB\-d\fR, \fB\-\-depth\fR \fIlevel\fR
+\" TODO
