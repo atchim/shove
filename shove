@@ -203,7 +203,7 @@ def remove_symlink(src, dest):
   if not os.path.isabs(path):
     path = os.path.join(os.path.dirname(dest), path)
 
-  if os.path.samefile(path, src):
+  if os.path.exists(path) and os.path.samefile(path, src):
     try:
       os.remove(dest)
     except OSError as err:
