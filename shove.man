@@ -16,43 +16,15 @@ shove \- stow, but angrier
 \" TODO
 
 
-.SH TERMINOLOGY
-
-.TP
-.B CHILD
-\" TODO
-
-.TP
-.B DEPTH
-\" TODO
-
-.TP
-.B MATCHED SYMBOLIC LINK
-\" TODO
-
-.TP
-.B UNMATCHED SYMBOLIC LINK
-\" TODO
-
-.TP
-.B SHOVE
-\" TODO
-
-.TP
-.B TREE
-\" TODO
-
-
 .SH FLAGS
 
 .TP
 .BR \-a ", " \-\-absolute
-If a symbolic links will be created, it will use absolute path.
+Use absolute path when creating symbolic links.
 
 .TP
 .BR \-h ", " \-\-help
-Print help message and finish code execution, ignoring behavior of other
-arguments.
+Print help message and finish code execution.
 
 .TP
 .BR \-k ", " \-\-keep\-going
@@ -60,8 +32,8 @@ When a non-critical error occur, the code execution will continue.
 
 .TP
 .BR \-n ", " \-\-no
-No changes will be made in the filesystem and everytime that a file is not
-shoved, a information level message be printed instead.
+No changes will be made in the filesystem and every time a file is not shoved,
+an information level message will be printed.
 
 .TP
 .BR \-r ", " \-\-rage
@@ -69,15 +41,15 @@ This flag is cumulative and the number of occurrences of this flag will affect
 the behavior of removing files in the destination tree. With 0 or more
 occurrences, Shove will be able to remove matched symbolic links. With 1 or
 more occurrences, Shove will be able to remove unmatched symbolic links. With 2
-or more occurrences, Shove will be able to remove regular files and empty
-directories. With 3 or more occurrences, Shove will be able to remove non-empty
-directories.
+or more occurrences, Shove will be able to remove files and empty directories.
+With 3 or more occurrences, Shove will be able to remove non-empty directories.
 
 .TP
 .BR \-t ", " \-\-tree
 If a directory is present in the source tree, it will be shoved by creating the
 same directory in the destination tree. All children of the source directory
-will be shoved.
+will be shoved. This flag will overlap the behavior of the \fB\-\-depth\fR
+option.
 
 .TP
 .BR \-u ", " \-\-unshove
@@ -88,7 +60,7 @@ will be removed. No files will be created in the destination tree.
 .BR \-v ", " \-\-verbose
 This flag is cumulative and the number of occurrences of this flag will affect
 the maximum logging level. With 0 or more occurrences, the \fBCRITICAL\fR and
-\fBERROR\fR levels will be printed. With 1 or more occurrences, the \fRWARN\fR
+\fBERROR\fR levels will be printed. With 1 or more occurrences, the \fBWARN\fR
 level will be printed. With 2 or more occurrences, the \fBINFO\fR level will be
 printed. With 3 or more occurrences, the \fBDEBUG\fR level will be printed.
 
@@ -97,4 +69,16 @@ printed. With 3 or more occurrences, the \fBDEBUG\fR level will be printed.
 
 .TP
 \fB\-d\fR, \fB\-\-depth\fR \fIlevel\fR
-\" TODO
+Specify the maximum nesting level to treat directories as the same way the
+\fB\-\-tree\fR flag does. The depth level is 1 by default.
+
+.TP
+\fB\-i\fR, \fB\-\-ignore\fR \fIregex\fR...
+Specify one or more Perl compatible regular expression. If a name of a file in
+the source tree matches with any regular expression defined this way, that file
+will not be shoved.
+
+.TP
+\fB\-p\fR, \fB\-\-paths\fR \fIsrc\fR \fIdest\fR
+Specify both source and destination paths of files to be shoved. The source
+path must exist. The source and destination paths can not be the same.

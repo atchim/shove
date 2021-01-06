@@ -85,8 +85,8 @@ def parse_args():
     '-i',
     '--ignore',
     default=[],
-    help='specify a regex pattern to ignore files',
-    metavar='pattern',
+    help='specify perl-like regex to ignore source files',
+    metavar='regex',
     nargs='+',
   )
 
@@ -183,8 +183,8 @@ def remove_file(path):
 
   if cmd_args.rage < 2:
     error(
-      f"rage level {cmd_args.rage} is not enough to remove file directory, "
-      'which requires rage level 2'
+      f"rage level {cmd_args.rage} is not enough to remove file, which "
+      'requires rage level 2'
     )
   else:
     try:
@@ -243,7 +243,7 @@ def shove(src, dest, depth):
     logger.debug(f"directory '{dest}' already exists")
     if isdir and not cmd_args.unshove: return
     remove_dir(dest)
-  elif os.path.isfile(dest):
+  elif os.path.exists(dest):
     logger.debug(f"file '{dest}' already exists")
     remove_file(dest)
   else:
@@ -285,16 +285,16 @@ def walk(src, dest, depth=0):
       with open(ignorepath) as reader:
         ignore = list(map(str.strip, reader.readlines()))
 
-    for filename in os.listdir(src):
-      if filename == '.shoveignore': continue
+    for file in os.listdir(src):
+      if file == '.shoveignore': continue
 
-      if is_match(filename, ignore) or is_match(filename, cmd_args.ignore):
-        logger.debug(f"ignoring file '{filename}'")
+      if is_match(file, ignore) or is_match(file, cmd_args.ignore):
+        logger.debug(f"ignoring file '{file}'")
         continue
 
       walk(
-        os.path.join(src, filename),
-        os.path.join(dest, filename),
+        os.path.join(src, file),
+        os.path.join(dest, file),
         depth + 1,
       )
 
