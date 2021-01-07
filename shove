@@ -59,11 +59,7 @@ def is_match(to_match, patterns):
 def parse_args():
   """Return a populated namespace with arguments from the CLI."""
 
-  parser = argparse.ArgumentParser(
-    description='stow, but angrier',
-    epilog='for more information, see the manpage',
-    prog='shove',
-  )
+  parser = argparse.ArgumentParser(description='stow, but angrier')
 
   parser.add_argument(
     '-a',
