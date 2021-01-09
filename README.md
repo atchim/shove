@@ -1,2 +1,3 @@
 # shove
-A tool to create directories and symlinks.
+
+> Stow, but angrier.
