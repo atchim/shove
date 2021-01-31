@@ -56,6 +56,11 @@ def is_match(to_match, patterns):
   return False
 
 
+def is_walkable(file, depth):
+  """Return true if given file is walkable, otherwise return false."""
+  return os.path.isdir(file) and (depth < cmd_args.depth or cmd_args.tree)
+
+
 def parse_args():
   """Return a populated namespace with arguments from the CLI."""
 
@@ -72,7 +77,7 @@ def parse_args():
     '-d',
     '--depth',
     default=1,
-    help="limit depth level to shove the tree; it's level 1 by default",
+    help="limit depth level to shove the tree (default: 1)",
     metavar='level',
     type=int,
   )
@@ -105,8 +110,8 @@ def parse_args():
     '--paths',
     action='append',
     default=[],
-    help='source and destination paths to shove',
-    metavar=('src', 'dest'),
+    help='source and target paths to shove',
+    metavar=('src', 'target'),
     nargs=2,
   )
 
@@ -129,7 +134,7 @@ def parse_args():
     '-u',
     '--unshove',
     action='store_true',
-    help='unshove files from destination',
+    help='unshove files from target',
   )
 
   parser.add_argument(
@@ -191,21 +196,21 @@ def remove_file(path):
       logger.warning(f"removed file '{path}'")
 
 
-def remove_symlink(src, dest):
-  """Remove link that the destination path refers to."""
+def remove_symlink(src, target):
+  """Remove link that the target path refers to."""
 
-  path = os.readlink(dest)
+  path = os.readlink(target)
 
   if not os.path.isabs(path):
-    path = os.path.join(os.path.dirname(dest), path)
+    path = os.path.join(os.path.dirname(target), path)
 
   if os.path.exists(path) and os.path.samefile(path, src):
     try:
-      os.remove(dest)
+      os.remove(target)
     except OSError as err:
-      error(f"unable to remove matched symlink '{dest}': {err}")
+      error(f"unable to remove matched symlink '{target}': {err}")
     else:
-      logger.debug(f"removed matched symlink '{dest}'")
+      logger.debug(f"removed matched symlink '{target}'")
   else:
     if cmd_args.rage < 1:
       error(
@@ -214,66 +219,66 @@ def remove_symlink(src, dest):
       )
     else:
       try:
-        os.remove(dest)
+        os.remove(target)
       except OSError as err:
-        error(f"unable to remove unmatched symlink '{dest}': {err}")
+        error(f"unable to remove unmatched symlink '{target}': {err}")
       else:
-        logger.info(f"removed unmatched symlink '{dest}'")
+        logger.info(f"removed unmatched symlink '{target}'")
 
 
-def shove(src, dest, depth):
-  """Shove source file in the destination."""
+def shove(src, target, depth):
+  """Shove source file in the target."""
 
   if cmd_args.no:
-    logger.info(f"not shoving '{src}' into '{dest}'")
+    logger.info(f"not shoving '{src}' into '{target}'")
     return
 
-  logger.debug(f"attempting to shove '{src}' into '{dest}'")
+  logger.debug(f"attempting to shove '{src}' into '{target}'")
 
-  isdir = os.path.isdir(src) and (depth < cmd_args.depth or cmd_args.tree)
+  walkable = is_walkable(src, depth)
 
-  if os.path.islink(dest):
-    logger.debug(f"symlink '{dest}' already exists")
-    remove_symlink(src, dest)
-  elif os.path.isdir(dest):
-    logger.debug(f"directory '{dest}' already exists")
-    if isdir and not cmd_args.unshove: return
-    remove_dir(dest)
-  elif os.path.exists(dest):
-    logger.debug(f"file '{dest}' already exists")
-    remove_file(dest)
+  if os.path.islink(target):
+    logger.debug(f"symlink '{target}' already exists")
+    remove_symlink(src, target)
+  elif os.path.isdir(target):
+    logger.debug(f"directory '{target}' already exists")
+    if walkable and not cmd_args.unshove: return
+    remove_dir(target)
+  elif os.path.exists(target):
+    logger.debug(f"file '{target}' already exists")
+    remove_file(target)
   else:
-    logger.debug(f"file '{dest}' does not exist yet")
+    logger.debug(f"file '{target}' does not exist yet")
 
   if cmd_args.unshove: return
 
-  if isdir:
+  if walkable:
     try:
-      os.mkdir(dest)
+      os.mkdir(target)
     except OSError as err:
-      error(f"unable to create directory '{dest}': {err}")
+      error(f"unable to create directory '{target}': {err}")
     else:
-      logger.info(f"shoved directory '{dest}'")
+      logger.info(f"shoved directory '{target}'")
   else:
     if cmd_args.absolute:
       path = os.path.abspath(src)
     else:
-      path = os.path.relpath(src, os.path.dirname(dest))
+      path = os.path.relpath(src, os.path.dirname(target))
 
     try:
-      os.symlink(path, dest)
+      os.symlink(path, target)
     except OSError as err:
-      error(f"unable to symlink '{dest}': {err}")
+      error(f"unable to symlink '{target}': {err}")
     else:
-      logger.info(f"symlinked '{dest}'")
+      logger.info(f"symlinked '{target}'")
 
 
-def walk(src, dest, depth=0):
-  """Walk through source file and shove it in the destination."""
+def walk(src, target, depth=0):
+  """Walk through source file and shove it in the target."""
 
-  if not cmd_args.unshove: shove(src, dest, depth)
+  if not cmd_args.unshove: shove(src, target, depth)
 
-  if os.path.isdir(src) and (depth < cmd_args.depth or cmd_args.tree):
+  if is_walkable(src, depth):
     ignorepath = os.path.join(src, '.shoveignore')
     ignore = []
 
@@ -290,24 +295,27 @@ def walk(src, dest, depth=0):
 
       walk(
         os.path.join(src, file),
-        os.path.join(dest, file),
+        os.path.join(target, file),
         depth + 1,
       )
 
-  if cmd_args.unshove: shove(src, dest, depth)
+  if cmd_args.unshove: shove(src, target, depth)
 
 
 if __name__ == '__main__':
   cmd_args = parse_args()
   logger = get_logger()
 
-  for src, dest in cmd_args.paths:
+  for src, target in cmd_args.paths:
     if not os.path.exists(src): critical(f"path '{src}' does not exist")
 
-    if os.path.exists(dest) and os.path.samefile(src, dest):
+    if os.path.exists(target) and os.path.samefile(src, target):
       critical(
-        'source and destination paths refers to the same file '
+        'source and target paths refers to the same file '
         f"'{os.path.realpath(src)}'"
       )
 
-    walk(src, dest)
+    walk(src, target)
+
+  if not cmd_args.paths:
+    print('no paths specified, quiting')

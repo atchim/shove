@@ -13,48 +13,67 @@ shove \- stow, but angrier
 
 .SH DESCRIPTION
 
-\" TODO
+Shove is a file management program similar to GNU Stow, although Shove is
+designed primarily to manage configuration files. The management happens by
+removing and installing symbolic links and directories in target paths.
+
+The \fB\-\-paths\fR option defines both source and target paths that are
+required to install or uninstall files. The installation has two steps. The
+first step is to try to remove files from the target tree that are also present
+in the source tree. The \fB\-\-rage\fR flag controls what kind of files Shove
+is able to remove. The second step is to try to install files from the source
+tree to the target tree. If the file to be installed is a directory, the
+installation method may vary according with the \fB\-\-tree\fR flag and the
+\fB\-\-depth\fR option. If the \fB\-\-unshove\fR flag was specified, the second
+step will be skipped, resulting in no files being installed.
 
 
 .SH FLAGS
 
 .TP
 .BR \-a ", " \-\-absolute
-Use absolute path when creating symbolic links.
+By default, created symbolic links are relative. This flag makes them absolute
+instead.
 
 .TP
 .BR \-h ", " \-\-help
-Print help message and finish code execution.
+This flag causes Shove to print the help message and exit.
 
 .TP
 .BR \-k ", " \-\-keep\-going
-When a non-critical error occur, the code execution will continue.
+By default, when any error occurs, Shove exits with an appropriate exit status.
+This flag causes Shove to keep running when a non-critical error occurs.
 
 .TP
 .BR \-n ", " \-\-no
-No changes will be made in the filesystem and every time a file is not shoved,
-an information level message will be printed.
+By default, Shove will attempt to make changes to the filesystem. This flag
+prevents Shove from changing the filesystem. Every time a change is prevented
+in this way, an information level message is printed.
 
 .TP
 .BR \-r ", " \-\-rage
 This flag is cumulative and the number of occurrences of this flag will affect
-the behavior of removing files in the destination tree. With 0 or more
-occurrences, Shove will be able to remove matched symbolic links. With 1 or
-more occurrences, Shove will be able to remove unmatched symbolic links. With 2
-or more occurrences, Shove will be able to remove files and empty directories.
-With 3 or more occurrences, Shove will be able to remove non-empty directories.
+the behavior of removing files in the target tree. With 0 or more occurrences,
+Shove is able to remove matched symbolic links. With 1 or more occurrences,
+Shove is able to remove unmatched symbolic links. With 2 or more occurrences,
+Shove is able to remove files and empty directories. With 3 or more
+occurrences, Shove is able to remove non-empty directories.
 
 .TP
 .BR \-t ", " \-\-tree
-If a directory is present in the source tree, it will be shoved by creating the
-same directory in the destination tree. All children of the source directory
-will be shoved. This flag will overlap the behavior of the \fB\-\-depth\fR
-option.
+By default, if a file is present in the source tree, it will be installed by
+creating in the target tree a symbolic link to that file. If the source file is
+a directory, this flag causes Shove to install it by creating a directory with
+the same name in the same path relative to the root in the target tree. All
+children of the source directory will be installed. This flag overlaps the
+\fB\-\-depth\fR option.
 
 .TP
 .BR \-u ", " \-\-unshove
-If a file exists in the destination tree and it refers to a source file, it
-will be removed. No files will be created in the destination tree.
+During the installation of a file, Shove will attempt to remove the preexistent
+one present in the target tree that is also present in the source tree. After
+this, by default, the file will be then finally installed. With this flag
+enabled, no files will be installed after the remotion.
 
 .TP
 .BR \-v ", " \-\-verbose
@@ -69,16 +88,52 @@ printed. With 3 or more occurrences, the \fBDEBUG\fR level will be printed.
 
 .TP
 \fB\-d\fR, \fB\-\-depth\fR \fIlevel\fR
-Specify the maximum nesting level to treat directories as the same way the
+Specify the nesting level limit to treat directories as the same way the
 \fB\-\-tree\fR flag does. The depth level is 1 by default.
 
 .TP
 \fB\-i\fR, \fB\-\-ignore\fR \fIregex\fR...
 Specify one or more Perl compatible regular expression. If a name of a file in
 the source tree matches with any regular expression defined this way, that file
-will not be shoved.
+will not be installed or uninstalled.
 
 .TP
 \fB\-p\fR, \fB\-\-paths\fR \fIsrc\fR \fIdest\fR
-Specify both source and destination paths of files to be shoved. The source
-path must exist. The source and destination paths can not be the same.
+This option takes two arguments, the first is the source path and the second is
+the target path. The source path is the path to the source file to be installed
+and therefore must exist. The target path is the path where the source file
+will be installed and therefore can not be the same as the source path. This
+option may be specified multiple times. If this option is not present, Shove
+will finish with a message informing it.
+
+
+.SH EXIT STATUS
+
+.TP
+0
+If no error was occurred.
+
+.TP
+1
+If a non-critical error was occurred.
+
+.TP
+2
+If a critical error was occurred.
+
+
+.SH FILES
+
+.TP
+.B .shoveignore
+This file may be placed in any branch in the source tree. Each line of this
+file must contain a Perl compatible regular expression. If a regular expression
+defined in \fB.shoveignore\fR matches against a name of any file inside the
+same directory of the \fB.shoveignore\fR file, the file with that name will not
+be installed.
+
+
+.SH SEE ALSO
+
+.BR ln (1)
+.BR stow (1)
