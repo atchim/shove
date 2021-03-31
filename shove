@@ -317,5 +317,4 @@ if __name__ == '__main__':
 
     walk(src, target)
 
-  if not cmd_args.paths:
-    print('no paths specified, quiting')
+  if not cmd_args.paths: print('no paths specified, quiting')

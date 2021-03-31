@@ -15,17 +15,8 @@ shove \- stow, but angrier
 
 Shove is a file management program similar to GNU Stow, although Shove is
 designed primarily to manage configuration files. The management happens by
-removing and installing symbolic links and directories in target paths.
-
-The \fB\-\-paths\fR option defines both source and target paths that are
-required to install or uninstall files. The installation has two steps. The
-first step is to try to remove files from the target tree that are also present
-in the source tree. The \fB\-\-rage\fR flag controls what kind of files Shove
-is able to remove. The second step is to try to install files from the source
-tree to the target tree. If the file to be installed is a directory, the
-installation method may vary according with the \fB\-\-tree\fR flag and the
-\fB\-\-depth\fR option. If the \fB\-\-unshove\fR flag was specified, the second
-step will be skipped, resulting in no files being installed.
+removing and installing symbolic links and directories from a source path into
+a target path.
 
 
 .SH FLAGS
@@ -72,8 +63,8 @@ children of the source directory will be installed. This flag overlaps the
 .BR \-u ", " \-\-unshove
 During the installation of a file, Shove will attempt to remove the preexistent
 one present in the target tree that is also present in the source tree. After
-this, by default, the file will be then finally installed. With this flag
-enabled, no files will be installed after the remotion.
+this, by default, the file will be then finally installed. This flag prevents
+the installation of files after the remotion.
 
 .TP
 .BR \-v ", " \-\-verbose
@@ -88,14 +79,14 @@ printed. With 3 or more occurrences, the \fBDEBUG\fR level will be printed.
 
 .TP
 \fB\-d\fR, \fB\-\-depth\fR \fIlevel\fR
-Specify the nesting level limit to treat directories as the same way the
-\fB\-\-tree\fR flag does. The depth level is 1 by default.
+This option takes the nesting level limit to treat directories as the same way
+the \fB\-\-tree\fR flag does. The depth level is 1 by default.
 
 .TP
 \fB\-i\fR, \fB\-\-ignore\fR \fIregex\fR...
-Specify one or more Perl compatible regular expression. If a name of a file in
-the source tree matches with any regular expression defined this way, that file
-will not be installed or uninstalled.
+This option takes one or more Perl compatible regular expressions. If a name of
+a file in the source tree matches with any regular expression defined this way,
+that file will not be installed or uninstalled.
 
 .TP
 \fB\-p\fR, \fB\-\-paths\fR \fIsrc\fR \fIdest\fR
@@ -127,11 +118,9 @@ If a critical error was occurred.
 .TP
 .B .shoveignore
 This file may be placed in any branch in the source tree. Each line of this
-file must contain a Perl compatible regular expression. If a regular expression
-defined in \fB.shoveignore\fR matches against a name of any file inside the
-same directory of the \fB.shoveignore\fR file, the file with that name will not
-be installed.
-
+file must contain a Perl compatible regular expression. Regular expressions
+contained in this file will cause the same effect as the arguments of the
+\fB\-\-ignore\fR option.
 
 .SH SEE ALSO
 
