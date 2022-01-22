@@ -1,4 +1,4 @@
-use std::{error, fmt, io};
+use std::{error, fmt, io, path::Path};
 
 #[derive(Debug)]
 pub enum Error {
@@ -40,7 +40,7 @@ impl From<RageError> for Error {
   }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Default,  Eq, Ord, PartialEq, PartialOrd)]
 pub struct RageError {
   ft: String,
   rage: usize,
@@ -66,3 +66,20 @@ impl fmt::Display for RageError {
 }
 
 impl error::Error for RageError {}
+
+pub trait Rm {
+  fn ft(&self) -> &str;
+  fn op(&self) -> io::Result<()>;
+  fn path(&self) -> &Path;
+  fn rage(&self) -> usize;
+
+  fn rm(&self, rage: usize) -> Result<(), Error> {
+    match rage >= self.rage() {
+      false => Err(RageError::new(self.ft(), rage, self.rage()).into()),
+      true => match self.op() {
+        Err(err) => Err(err.into()),
+        Ok(_) => Ok(()),
+      },
+    }
+  }
+}

@@ -3,6 +3,8 @@ use std::{borrow::Cow, path::Path};
 use log::{debug, error, info, trace};
 use regex::RegexSet;
 use same_file::is_same_file;
+use crate::ft::get_rm_ft;
+
 use super::{cfg::Cfg, cli::Opts, dot::{Dots, ShPath}};
 use walkdir::WalkDir;
 
@@ -59,49 +61,43 @@ impl Shover {
     Shover {absolute, depth, dots, follow, ignore, no, rage, unshove}
   }
 
-  fn shove<D, S>(&self, src: S, dest: D, _depth: usize)
-    where D: AsRef<Path>, S: AsRef<Path>
-  {
+  fn shove<D, S>(&self, src: S, dest: D, depth: usize)
+  where D: AsRef<Path>, S: AsRef<Path> {
     let src = src.as_ref();
     let dest = dest.as_ref();
 
-    let src_display = src.display();
-    let dest_display = dest.display();
+    let srcd = src.display();
+    let destd = dest.display();
 
     if self.no {
-      info!("not shoving: {} -> {}", src_display, dest_display);
+      info!("not shoving: {} -> {}", srcd, destd);
       return;
     }
+    trace!("attempting to shove: {} -> {}", srcd, destd);
 
-    trace!(
-      "attempting to shove: {} -> {}",
-      src_display,
-      dest_display,
-    );
+    let walkable = is_walkable(src, depth, self.depth);
+    let rm = get_rm_ft(src, dest);
   }
 
   pub fn shove_dots(&self) {
     for dot in self.dots.iter() {
-      info!("shoving dot: {}", dot.name);
-
-      let src = dot.src();
-      if !src.is_dir() {
-        error!("source path is not a directory: {}", src.display());
-        continue;
-      }
-
-      let dest = match dot.dest() {
+      let dot = match dot {
         Err(err) => {
           error!("{}", err);
           continue;
         }
-        Ok(dest) => match dest {
-          ShPath::Expanded {buf, s} => {
-            trace!("expanded: {} -> {}", s, buf.display());
-            Cow::Owned(buf)
-          }
-          ShPath::Normal(dest) => Cow::Borrowed(dest),
-        },
+        Ok(dot) => dot,
+      };
+
+      info!("shoving dot: {}", dot.name);
+
+      let src = dot.src;
+      let dest = match dot.dest {
+        ShPath::Expanded {buf, s} => {
+          trace!("expanded: {} -> {}", s, buf.display());
+          Cow::Owned(buf)
+        }
+        ShPath::Normal(dest) => Cow::Borrowed(dest),
       };
 
       // Avoid removing dotfiles.
@@ -155,4 +151,10 @@ impl Shover {
       }
     }
   }
+}
+
+fn is_walkable<P>(path: P, depth: usize, max_depth: usize) -> bool
+  where P: AsRef<Path>
+{
+  path.as_ref().is_dir() && (depth > 0 || depth < max_depth)
 }

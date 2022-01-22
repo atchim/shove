@@ -1,7 +1,6 @@
-mod err;
-
-pub use self::err::*;
 use std::{fs::{remove_dir, remove_file}, io, path::Path};
+use same_file::is_same_file;
+use super::rm::Rm;
 
 pub struct Dotfile<'a>(&'a Path);
 
@@ -83,23 +82,6 @@ impl<'a> Rm for NonEmptyDir<'a> {
   }
 }
 
-pub trait Rm {
-  fn ft(&self) -> &str;
-  fn op(&self) -> io::Result<()>;
-  fn path(&self) -> &Path;
-  fn rage(&self) -> usize;
-
-  fn rm(&self, rage: usize) -> Result<(), Error> {
-    match rage >= self.rage() {
-      false => Err(RageError::new(self.ft(), rage, self.rage()).into()),
-      true => match self.op() {
-        Err(err) => Err(err.into()),
-        Ok(_) => Ok(()),
-      },
-    }
-  }
-}
-
 pub struct Symlink<'a>(&'a Path);
 
 impl<'a> Rm for Symlink<'a> {
@@ -118,4 +100,26 @@ impl<'a> Rm for Symlink<'a> {
   fn rage(&self) -> usize {
     1
   }
+}
+
+pub fn get_rm_ft<'a>(src: &'a Path, dest: &'a Path)
+-> io::Result<Box<dyn Rm + 'a>> {
+  let ft = dest.metadata()?.file_type();
+  Ok(if ft.is_symlink() {
+    if is_same_file(dest.read_link()?, src)? {
+      Box::new(Dotfile(dest))
+    } else {
+      Box::new(Symlink(dest))
+    }
+  } else if ft.is_dir() {
+    if dest.read_dir()?.count() == 0 {
+      Box::new(EmptyDir(dest))
+    } else {
+      Box::new(NonEmptyDir(dest))
+    }
+  } else if ft.is_file() {
+    Box::new(File(dest))
+  } else {
+    unreachable!(); // FIXME: This is clearly reachable...
+  })
 }
