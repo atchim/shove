@@ -3,7 +3,6 @@ mod cli;
 mod dot;
 mod ft;
 mod log;
-mod rm;
 mod shover;
 
 use clap::Parser;

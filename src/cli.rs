@@ -15,7 +15,7 @@ pub struct Opts {
   #[clap(long, short = '/', value_name = "SWITCH")]
   pub absolute: Option<Switch>,
 
-  /// Do not die on error.
+  /// Don't die on error.
   #[clap(long, short, value_name = "SWITCH")]
   pub berserker: Option<Switch>,
 
@@ -23,13 +23,13 @@ pub struct Opts {
   #[clap(arg_enum, default_value = "auto", long, short, value_name = "WHEN")]
   pub color: ColorWhen,
 
-  /// Dots to be shoved.
-  #[clap(value_name = "DOT")]
-  pub dots: Vec<String>,
-
   /// Limit depth level to shove.
   #[clap(long, short, value_name = "LEVEL")]
   pub depth: Option<usize>,
+
+  /// Dots to be shoved.
+  #[clap(value_name = "DOT")]
+  pub dots: Vec<String>,
 
   /// Follow links.
   #[clap(long, short, value_name = "SWITCH")]

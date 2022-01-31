@@ -1,136 +1,92 @@
+mod dots;
 mod sh;
 
-pub use self::sh::{ShPath, ShPathErr};
-use serde::Deserialize;
-use std::{
-  collections::{btree_map::Iter as BTreeMapIter, BTreeMap},
-  error::Error,
-  fmt,
-  ops::{Deref, DerefMut},
-  path::{Path, PathBuf},
-};
-
-pub type DotMap = BTreeMap<String, Info>;
-pub type DotMapItem<'a> = (&'a String, &'a Info);
-pub type DotMapIter<'a> = BTreeMapIter<'a, String, Info>;
+use same_file::is_same_file;
+pub use self::{dots::Dots, sh::{Error as ShError, Sh}};
+use std::{error, fmt, path::{PathBuf, Path}, io};
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Dot<'a> {
-  pub dest: ShPath<'a>,
+  pub dest: Sh<'a>,
   pub name: &'a str,
   pub src: &'a Path,
 }
 
-impl<'a> TryFrom<DotMapItem<'a>> for Dot<'a> {
-  type Error = DotErr;
-
-  fn try_from((name, info): DotMapItem<'a>) -> Result<Self, Self::Error> {
-    let (src, dest) = match info {
-      Info::Str(s) => (name, s),
-      Info::Table {dest, src} => (src, dest),
-    };
-
+impl<'a> Dot<'a> {
+  pub fn new(name: &'a str, src: &'a str, dest: &'a str)
+    -> Result<Self, Error>
+  {
     let src = Path::new(src);
     if !src.exists() {
-      return Err(DotErr::nonexistent_src(name, src.to_path_buf()))
+      return Err(
+        Error::new(name, ErrorKind::NonexistentSrc(src.to_path_buf()))
+      );
     }
 
-    let dest = match ShPath::try_from(dest.as_str()) {
-      Err(err) => return Err(DotErr::shpath_err(name, err)),
-      Ok(shpath) => shpath,
+    let dest = match Sh::try_from(dest) {
+      Err(err) => return Err(Error::new(name, ErrorKind::ShError(err))),
+      Ok(sh) => sh,
     };
+
+    let dest_ = match &dest {
+      Sh::Expanded {buf, ..} => buf,
+      Sh::Normal(p) => *p,
+    };
+
+    if dest_.exists() {
+      match is_same_file(dest_, src) {
+        Err(err) => return Err(Error::new(name, ErrorKind::IoError(err))),
+        Ok(true) => return Err(
+          Error::new(name, ErrorKind::SameFile(dest_.to_path_buf()))
+        ),
+        Ok(false) => (),
+      }
+    }
+
     Ok(Dot {dest, name, src})
   }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DotErr {
+#[derive(Debug)]
+pub struct Error {
+  pub kind: ErrorKind,
   pub name: String,
-  pub ty: DotErrType,
 }
 
-impl DotErr {
-  pub fn nonexistent_src<P>(name: &str, src: P) -> Self where P: AsRef<Path> {
-    DotErr {
-      name: name.to_string(),
-      ty: DotErrType::NonexistentSrc(src.as_ref().to_path_buf()),
-    }
-  }
-
-  pub fn shpath_err(name: &str, err: ShPathErr) -> Self {
-    DotErr {
-      name: name.to_string(),
-      ty: DotErrType::ShPathErr(err),
-    }
+impl Error {
+  pub fn new(name: &str, kind: ErrorKind) -> Self {
+    Error {kind, name: name.to_string()}
   }
 }
 
-impl fmt::Display for DotErr {
+impl fmt::Display for Error {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let s: String;
-    let msg: &dyn fmt::Display = match &self.ty {
-      DotErrType::ShPathErr(err) => err,
-      DotErrType::NonexistentSrc(src) => {
-        s = format!("nonexistent source file: {}", src.display());
+    let msg: &dyn fmt::Display = match &self.kind {
+      ErrorKind::IoError(err) => err,
+      ErrorKind::SameFile(p) => {
+        s = format!(
+          "source and destination paths refers to same file {}",
+          p.display(),
+        );
+        &s
+      }
+      ErrorKind::ShError(err) => err,
+      ErrorKind::NonexistentSrc(src) => {
+        s = format!("nonexistent source file {}", src.display());
         &s
       }
     };
-    write!(f, "dot: {}: {}", self.name, msg)
+    write!(f, "in dot {}: {}", self.name, msg)
   }
 }
 
-impl Error for DotErr {}
+impl error::Error for Error {}
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum DotErrType {
-  ShPathErr(ShPathErr),
+#[derive(Debug)]
+pub enum ErrorKind {
+  IoError(io::Error),
   NonexistentSrc(PathBuf),
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
-#[serde(from = "DotMap")]
-pub struct Dots(DotMap);
-
-impl Dots {
-  pub fn iter(&self) -> Iter {
-    Iter(self.0.iter())
-  }
-}
-
-impl Deref for Dots {
-  type Target = DotMap;
-
-  fn deref(&self) -> &Self::Target {
-    &self.0
-  }
-}
-
-impl DerefMut for Dots {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.0
-  }
-}
-
-impl From<DotMap> for Dots {
-  fn from(t: DotMap) -> Self {
-    Dots(t)
-  }
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
-#[serde(untagged)]
-pub enum Info {
-  Str(String),
-  Table {dest: String, src: String},
-}
-
-#[derive(Clone, Debug)]
-pub struct Iter<'a>(DotMapIter<'a>);
-
-impl<'a> Iterator for Iter<'a> {
-  type Item = Result<Dot<'a>, DotErr>;
-
-  fn next(&mut self) -> Option<Self::Item> {
-    Some(Dot::try_from(self.0.next()?))
-  }
+  SameFile(PathBuf),
+  ShError(ShError),
 }
