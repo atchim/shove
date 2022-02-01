@@ -60,22 +60,22 @@ impl<'a> Ft<'a> {
     let src = src.as_ref();
     let ty = if dest.is_symlink() {
       let link = dest.read_link()?;
+
+      let link = match link.is_relative() {
+        false => link,
+        true => {
+          let par = rel_canon(cd().unwrap(), dest).unwrap();
+          let par = par.parent().unwrap();
+          rel_canon(par, &link).unwrap()
+        }
+      };
+
       match link.exists() {
         false => Type::Symlink,
-        true => {
-          let link = match link.is_relative() {
-            false => link,
-            true => {
-              let par = rel_canon(cd().unwrap(), dest).unwrap();
-              let par = par.parent().unwrap();
-              rel_canon(par, &link).unwrap()
-            }
-          };
-          match is_same_file(link, src)? {
-            false => Type::Symlink,
-            true => Type::Dotlink,
-          }
-        }
+        true => match is_same_file(link, src)? {
+          false => Type::Symlink,
+          true => Type::Dotlink,
+        },
       }
     } else if dest.is_dir() {
       match dest.read_dir()?.count() == 0 {
