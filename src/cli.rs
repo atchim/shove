@@ -93,7 +93,7 @@ impl FromStr for Switch {
     match s {
       "0" | "off" => Ok(Switch::Off),
       "1" | "on" => Ok(Switch::On),
-      _ => Err(format!("invalid switch value: {}", s)),
+      _ => Err(format!("invalid switch value \"{}\"", s)),
     }
   }
 }

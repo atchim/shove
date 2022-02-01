@@ -4,6 +4,7 @@ mod dot;
 mod ft;
 mod log;
 mod shover;
+mod util;
 
 use clap::Parser;
 use self::{cfg::Cfg, cli::Opts, shover::Shover};
@@ -17,8 +18,8 @@ fn main() {
   let cfg: Cfg = {
     let s = match read_to_string(CFG_FILE) {
       Err(err) => match err.kind() {
-        ErrorKind::NotFound => panic!("could not find: {}", CFG_FILE),
-        _ => panic!("unable to read: {}: {}", CFG_FILE, err),
+        ErrorKind::NotFound => panic!("could not find \"{}\"", CFG_FILE),
+        _ => panic!("unable to read \"{}\": {}", CFG_FILE, err),
       },
       Ok(s) => s,
     };

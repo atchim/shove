@@ -20,7 +20,6 @@ impl Dots {
 
 impl Deref for Dots {
   type Target = DotsInt;
-
   fn deref(&self) -> &Self::Target {
     &self.0
   }
