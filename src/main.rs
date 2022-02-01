@@ -4,7 +4,6 @@ mod dot;
 mod ft;
 mod log;
 mod shover;
-mod util;
 
 use clap::Parser;
 use self::{cfg::Cfg, cli::Opts, shover::Shover};

@@ -7,7 +7,6 @@ use std::{
   path::Path,
   fs::{remove_file, remove_dir, remove_dir_all},
 };
-use super::util::rel_canon;
 
 #[derive(Debug)]
 pub enum Error {
@@ -63,11 +62,7 @@ impl<'a> Ft<'a> {
 
       let link = match link.is_relative() {
         false => link,
-        true => {
-          let par = rel_canon(cd().unwrap(), dest).unwrap();
-          let par = par.parent().unwrap();
-          rel_canon(par, &link).unwrap()
-        }
+        true => cd().unwrap().join(dest).parent().unwrap().join(&link),
       };
 
       match link.exists() {

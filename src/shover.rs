@@ -10,13 +10,7 @@ use std::{
   path::{Path, PathBuf},
   process::exit,
 };
-use super::{
-  cfg::Cfg,
-  cli::Opts,
-  dot::{Dots, Sh},
-  ft::{Ft, Type},
-  util::rel_canon,
-};
+use super::{cfg::Cfg, cli::Opts, dot::{Dots, Sh}, ft::{Ft, Type}};
 use walkdir::{DirEntry, WalkDir};
 
 pub struct Shover {
@@ -174,7 +168,7 @@ impl Shover {
             let base = match dest.is_relative() {
               false => dest,
               true => {
-                buf = rel_canon(cd().unwrap(), dest).unwrap();
+                buf = cd().unwrap().join(dest);
                 &buf
               }
             };
