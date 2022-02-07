@@ -5,9 +5,9 @@ use std::{
   borrow::Cow,
   io::ErrorKind,
   env::current_dir as cd,
-  fs::create_dir,
+  fs::{create_dir, create_dir_all},
   os::unix::fs::symlink,
-  path::{Path, PathBuf},
+  path::Path,
   process::exit,
 };
 use super::{cfg::Cfg, cli::Opts, dot::{Dots, Sh}, ft::{Ft, Type}};
@@ -84,13 +84,15 @@ impl Shover {
   }
 
   fn shove<P>(&self, src: &DirEntry, dest: P) where P: AsRef<Path> {
-    let srcd = src.path().display();
     let dest = dest.as_ref();
-    let destd = dest.display();
 
-    match self.unshove {
-      false => info!("shoving \"{}\" into \"{}\"", srcd, destd),
-      true => info!("unshoving \"{}\" from \"{}\"", srcd, destd),
+    {
+      let src = src.path().display();
+      let dest = dest.display();
+      match self.unshove {
+        false => info!("shoving \"{}\" into \"{}\"", src, dest),
+        true => info!("unshoving \"{}\" from \"{}\"", src, dest),
+      }
     }
 
     if self.no {
@@ -100,12 +102,9 @@ impl Shover {
 
     let node = self.node(src);
 
-    // Check if `dest` exists without traversing symlinks and remove it if
-    // necessary.
+    trace!("attempting to remove old dest file");
     match dest.symlink_metadata() {
       Ok(_) => {
-        trace!("destination file already exists");
-
         let ft = match Ft::new(src.path(), dest) {
           Err(err) => {
             error!("{}", err);
@@ -117,60 +116,57 @@ impl Shover {
 
         match ft.ty {
           Type::Dotlink if !self.unshove => {
-            trace!("destination file is a dotlink");
             match ft.path.read_link().unwrap().is_absolute() == self.absolute {
-              false => {
-                warn!("bad dotlink; removing");
-                if let Err(err) = ft.rm(self.rage) {
+              false => match ft.rm(self.rage) {
+                Err(err) => {
                   error!("unable to remove bad dotlink: {}", err);
                   if !self.berserker {exit(1);}
                   return;
                 }
+                Ok(_) => debug!("removed bad dotlink"),
               }
               true => {
                 debug!("dotfile already properly shoved");
-                trace!("skipping");
                 return;
               }
             }
           }
           Type::EmptyDir | Type::NonemptyDir if node && !self.unshove => {
-            debug!("dotfile already properly shoved");
-            trace!("skipping");
+            debug!("dotfile dir already properly shoved");
             return;
           }
-          _ => if let Err(err) = ft.rm(self.rage) {
-            error!("unable to remove destination file: {}", err);
-            if !self.berserker {exit(1);}
-            return;
-          },
+          _ => match ft.rm(self.rage) {
+            Err(err) => {
+              error!("unable to remove dest file: {}", err);
+              if !self.berserker {exit(1);}
+              return;
+            }
+            Ok(_) => debug!("removed dest {}", ft.ty),
+          }
         }
       }
       Err(err) => match err.kind() {
-        ErrorKind::NotFound => debug!("destination file doesn't exist yet"),
+        ErrorKind::NotFound => trace!("dest file doesn't exist yet"),
         _ => {
-          error!("unable to read destination file: {}", err);
+          error!("unable to read dest file: {}", err);
           if !self.berserker {exit(1);}
           return;
         }
-      },
+      }
     }
 
     if self.unshove {return;}
 
+    trace!("attempting to create dest file");
     match node {
       false => {
         let src = src.path().canonicalize().unwrap();
 
         let path = match self.absolute {
           false => {
-            let buf: PathBuf;
             let base = match dest.is_relative() {
-              false => dest,
-              true => {
-                buf = cd().unwrap().join(dest);
-                &buf
-              }
+              false => Cow::Borrowed(dest),
+              true => Cow::Owned(cd().unwrap().join(dest)),
             };
             let base = base.parent().unwrap();
             diff_paths(&src, base).unwrap()
@@ -178,15 +174,21 @@ impl Shover {
           true => src,
         };
 
-        if let Err(err) = symlink(path, dest) {
-          error!("unable to symlink: {}",  err);
-          if !self.berserker {exit(1);}
+        match symlink(path, dest) {
+          Err(err) => {
+            error!("unable to create dest symlink: {}",  err);
+            if !self.berserker {exit(1);}
+          }
+          Ok(_) => debug!("created dest symlink"),
         }
       }
-      true => if let Err(err) = create_dir(dest) {
-        error!("unable to create dir: {}", err);
-        if !self.berserker {exit(1);}
-      },
+      true => match create_dir(dest) {
+        Err(err) => {
+          error!("unable to create dest dir: {}", err);
+          if !self.berserker {exit(1);}
+        }
+        Ok(_) => debug!("created dest dir"),
+      }
     }
   }
 
@@ -200,7 +202,6 @@ impl Shover {
         Err(err) => {
           error!("{}", err);
           if !self.berserker {exit(1);}
-          trace!("skipping to next dot");
           continue;
         }
         Ok(dot) => dot,
@@ -211,11 +212,25 @@ impl Shover {
       let src = dot.src;
       let dest = match dot.dest {
         Sh::Expanded {buf, s} => {
-          debug!("expanded {} -> {}", s, buf.display());
+          trace!("expanded \"{}\" to \"{}\"", s, buf.display());
           Cow::Owned(buf)
         }
         Sh::Normal(dest) => Cow::Borrowed(dest),
       };
+
+      if !dest.exists() {
+        trace!("root dest dir doesn't exist yet");
+        if !self.unshove {
+          match create_dir_all(&dest) {
+            Err(err) => {
+              error!("unable to create dest root dir: {}", err);
+              if !self.berserker {exit(1);}
+              continue;
+            }
+            Ok(_) => debug!("created dest root dir"),
+          }
+        }
+      }
 
       let mut walker = WalkDir::new(src)
         .min_depth(1)
@@ -234,12 +249,11 @@ impl Shover {
         let path = entry.path();
         let ignored = self.ignored(path);
         if ignored {
-          debug!("ignoring path \"{}\"", path.display());
+          warn!("ignoring path \"{}\"", path.display());
         }
         !ignored
       });
 
-      trace!("walking through dotfiles");
       for entry in walker {
         let entry = match entry {
           Err(err) => {
@@ -252,7 +266,6 @@ impl Shover {
         let dest = dest.join(entry.path().strip_prefix(src).unwrap());
         self.shove(&entry, &dest);
       }
-      trace!("shoving process terminated for dot \"{}\"", dot.name);
     }
   }
 }

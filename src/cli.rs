@@ -48,11 +48,11 @@ pub struct Opts {
   pub unshove: bool,
 
   /// Increase verbosity.
-  #[clap(parse(from_occurrences), short)]
+  #[clap(long, parse(from_occurrences), short)]
   verbose: usize,
 
   /// Decrease verbosity.
-  #[clap(parse(from_occurrences), short)]
+  #[clap(long, parse(from_occurrences), short)]
   quiet: usize,
 }
 
