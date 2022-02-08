@@ -2,30 +2,50 @@
 
 > Stow, but angry
 
-Shove is a tool similar to [GNU Stow][stow], although Shove is primarily
-designed to install [dotfiles][dotfiles]. The main difference from Stow is that
-Shove allows more flexible dotfile installation through the optional use of
+Shove is a tool similar to [GNU Stow], although Shove is primarily
+designed to manage configuration files. The main difference from Stow is that
+Shove allows more flexible file installation through the optional use of
 directories instead of the traditional approach of Stow, in which directories
 are installed as symbolic links. Another major difference is how Shove will
-remove files and how it avoid users from accidentally removing wrong files.
+uninstall files and how it avoid users from accidentally performing dangerous
+removals.
+
+## Terminology
+
+### Dot
+
+A setting defined at the `.shove.toml` configuration file for Shove. This
+setting specifies a name for itself, a source path to a directory and a
+destination path which, after performed shell expansion, must evaluate to a
+path where the source files should be installed. For more information, see
+[dots](#dots).
+
+### Dotfile
+
+A file contained in the source directory of a [dot](#dot). This file is taken
+as reference by Shove to perform filesystem operations as, for instance,
+installing and uninstalling files.
+
+<!--TODO: Create subtopic for "tree" term.-->
 
 ## How It Works
 
 When executed, the first thing Shove will do is look up for a file named
-`.shove.toml` located at the current working directory. This file is the
-configuration file for Shove and it must have information about how the program
-will install (shove) or uninstall (unshove) dotfiles. In order to know more
-about Shove configuration, see the [Configurations](#configurations) topic.
+`.shove.toml` located at the current working directory. This is the
+configuration file for Shove and it may have information about how the program
+will manage dotfiles. For more information, see
+[Configurations](#configurations).
 
 After reading the configuration file, Shove will read the arguments passed via
 command line. Some arguments will override settings specified in the
-configuration file. For more information about the command line interface, see
-the [CLI](#cli) topic.
+configuration file. For more information, see [CLI](#cli).
+
+<!--TODO: Continue the explanation.-->
 
 ## Configurations
 
-As previously informed, the configurations for Shove are defined in a file
-named `.shove.toml`, which must be written using the [toml][toml] syntax. The
+As previously mentioned, the configurations for Shove are defined in a file
+named `.shove.toml`, which must be written using the [TOML] syntax. The
 following subtopics covers each configuration that may be set in the
 configuration file.
 
@@ -34,50 +54,59 @@ configuration file.
 - Type: Boolean
 - Default: `false`
 
-If it's true, created symlinks will have absolute paths, otherwise it will
-have relative ones.
+If true, when creating symbolic links, their paths will be absolute; otherwise
+the paths will be relative.
 
 ### `berserker`
 
 - Type: Boolean
 - Default: `false`
 
-If it's true, the code execution will continue on passable errors, otherwise
-the execution will finish with exit code 1.
+If true, the code execution will continue on passable errors; otherwise the
+execution will finish immediately with exit code 1.
 
 ### `depth`
 
 - Type: Unsigned Integer
 - Default: `0`
 
-Maximum directory depth to shove. Dotfiles which are directories located at the
-maximum depth will be shoved as symlinks instead of directories. Setting this
-configuration to zero means that there is no maximum directory depth, which
-causes all directories to be shoved as directories themselves.
+Maximum dotfile depth to manage. The depth is calculated based on the nesting
+level of a dotfile relative to the dot source directory. A dotfile which is
+child of the source directory of a dot has depth one. A dotfile which is
+child of the one previously mentioned has depth two and so on...
+
+Dotfiles which are directories with maximum depth will be installed as symbolic
+links instead of directories. Setting this configuration to zero means that
+there is no maximum depth, resulting in all directories being installed as
+directories themselves.
+
+```toml
+# To have a behavior similar to how Stow works, set the depth to 1.
+depth = 1
+```
 
 ### `dots`
 
 - Type: Table
 - Default: `{}`
 
-A table in which keys stands for name of dots and its values may be strings or
-tables. If the value of a key is a string, then its key will be interpreted as
-path to the directory containing the dotfiles and its value will be considered
-as the destination path where the dotfiles will be shoved. Otherwise if the
-value of a key is a table, it must contain two fields which are `src` and
-`dest`. `src` must be a string which stands for the source path where is
-located the directory containing the dotfiles. `dest` must also be a string
-that stands for the path where the dotfiles will be shoved.
+A table in which each key stands for the name of a dot. Each value for a key
+may be a string or a table. If the value is a string, then its key will be
+considered the dot source path and its value will be considered the destination
+path.
 
-A basic shell expansion will be performed in the destination path string in
-order to evaluate the actual path.
+Otherwise, if the value of a key is a table, it must contain two fields which
+are `src` and `dest`. `src` must be a string and it will be considered as the
+dot source path. `dest` must also be a string and it will be considered as the
+destination path of the dot. For more information, see [Dot](#dot).
 
 ```toml
 [dots]
-# Bash dotfiles from `bash` directory with destination at the home directory.
+# A dot with name and source path set to "bash" and with destination path set
+# to "$HOME".
 bash = '$HOME'
-# Neovim dotfiles from `neovim` directory with destination at the default
-# configuration directory.
+# A dot with name set to "vi", source path set to "neovim" and destination path
+# set to "~/.config/nvim".
 vi = {src = 'neovim', dest = '~/.config/nvim'}
 ```
 
@@ -86,8 +115,8 @@ vi = {src = 'neovim', dest = '~/.config/nvim'}
 - Type: Boolean
 - Default: `false`
 
-If it's true, symlinks located among the dotfiles will be followed, otherwise
-they won't be.
+If true, symbolic links among the dotfiles will be followed; otherwise they
+won't be.
 
 ### `ignore`
 
@@ -95,15 +124,31 @@ they won't be.
 - Default: `[]`
 
 List of regex strings to match against name of dotfiles. Names matched this way
-won't be shoved or unshoved.
+won't be managed by Shove.
 
 ```toml
 # Ignore all files with the ".unsafe" suffix.
-ignore = ['\.unsafe']
+ignore = ['\.unsafe$']
 ```
+
+### `rage`
+
+- Type: Unsigned Integer
+- Default: `0`
+
+This setting controls how files located at the destination tree will be
+removed if necessary. Higher rage level means more permission to perform
+dangerous removals.
+
+With rage level 0, which is the default, Shove will only be able to remove
+symbolic links that refers to a dotfile. With rage level 1, Shove will be able
+to remove symbolic links referring to an arbitrary location.
+
+With rage level 2, Shove will be able to remove common files and empty
+directories. With rage level 3 or more, Shove will be able to remove non-empty
+directories.
 
 ## CLI
 
-[dotfiles]: https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory#Unix_and_Unix-like_environments
-[stow]: https://www.gnu.org/software/stow
-[toml]: https://toml.io
+[GNU Stow]: https://www.gnu.org/software/stow
+[TOML]: https://toml.io
