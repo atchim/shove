@@ -39,6 +39,10 @@ pub struct Opts {
   #[clap(long, short)]
   pub no: bool,
 
+  /// Decrease verbosity.
+  #[clap(long, parse(from_occurrences), short)]
+  quiet: usize,
+
   /// Rage to remove files.
   #[clap(long, short, value_name = "LEVEL")]
   pub rage: Option<usize>,
@@ -50,10 +54,6 @@ pub struct Opts {
   /// Increase verbosity.
   #[clap(long, parse(from_occurrences), short)]
   verbose: usize,
-
-  /// Decrease verbosity.
-  #[clap(long, parse(from_occurrences), short)]
-  quiet: usize,
 }
 
 impl Opts {

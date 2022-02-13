@@ -140,15 +140,43 @@ This setting controls how files located at the destination tree will be
 removed if necessary. Higher rage level means more permission to perform
 dangerous removals.
 
-With rage level 0, which is the default, Shove will only be able to remove
-symbolic links that refers to a dotfile. With rage level 1, Shove will be able
-to remove symbolic links referring to an arbitrary location.
-
-With rage level 2, Shove will be able to remove common files and empty
-directories. With rage level 3 or more, Shove will be able to remove non-empty
-directories.
+- With rage level 0, which is the default, Shove will only be able to remove
+  symbolic links that refers to a dotfile.
+- With rage level 1, Shove will be able to remove symbolic links referring to
+  an arbitrary location.
+- With rage level 2, Shove will be able to remove common files and empty
+  directories.
+- With rage level 3 or more, Shove will be able to remove non-empty
+  directories.
 
 ## CLI
+
+> `shove [-a SWITCH] [-b SWITCH] [-c WHEN] [-d LEVEL] [-f SWITCH] [-n]
+> [-q ...] [-r LEVEL] [-u] [-v ...] [DOT ...]`
+
+### Flags
+
+#### `-n`, `--no`
+
+Do not make any change to the filesystem; basically a dry-run.
+
+#### `-q`, `--quiet`
+
+- Cumulative
+
+Decrease output verbosity. Only the first occurrence of this flag will take
+effect.
+
+#### `-u`, `--unshove`
+
+Uninstall dotfiles.
+
+#### `-v`, `--verbose`
+
+- Cumulative
+
+Increase output verbosity. Only the first three occurrences of this flag will
+take effect.
 
 [GNU Stow]: https://www.gnu.org/software/stow
 [TOML]: https://toml.io
