@@ -154,6 +154,9 @@ dangerous removals.
 > `shove [-a SWITCH] [-b SWITCH] [-c WHEN] [-d LEVEL] [-f SWITCH] [-n]
 > [-q ...] [-r LEVEL] [-u] [-v ...] [DOT ...]`
 
+> Arguments passed via command line override settings from the configuration
+> file.
+
 ### Flags
 
 #### `-n`, `--no`
@@ -177,6 +180,51 @@ Uninstall dotfiles.
 
 Increase output verbosity. Only the first three occurrences of this flag will
 take effect.
+
+### Switches
+
+A switch is an option that takes an argument which may be `0`, `1`, `off` or
+`on`. `0` or `off` disables the option, while `1` or `on` enables it.
+
+#### `-a`, `--absolute`
+
+See [absolute](#absolute).
+
+#### `-b`, `--berserker`
+
+See [berserker](#berserker).
+
+#### `-f`, `--follow`
+
+See [follow](#follow).
+
+### Options
+
+#### `-c WHEN`, `--color WHEN`
+
+This option specifies when to use colored output. The `WHEN` argument may be
+one of the following options.
+
+- `always`: Always use colored output.
+- `auto`: Try use colors when possible.
+- `never`: Obviously never emit colors.
+
+#### `-d LEVEL`, `--depth LEVEL`
+
+See [depth](#depth).
+
+#### `-r LEVEL`, `--rage LEVEL`
+
+See [rage](#rage).
+
+### Positional Arguments
+
+#### `DOT`
+
+If present, this argument selects dots to be managed among the ones defined in
+the configuration file. The `DOT` argument must match a name of a dot defined
+in the configuration file. If not present, all dots defined in the
+configuration file will be managed. For more information, see [dots](#dots).
 
 [GNU Stow]: https://www.gnu.org/software/stow
 [TOML]: https://toml.io
